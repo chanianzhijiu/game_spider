@@ -1,0 +1,4 @@
+interface:
+  display_name: "Game Script Spider"
+  short_description: "Crawl public VN packages and extract branching scripts."
+  default_prompt: "Use $game-script-spider to discover public visual novel packages, download allowed archives, and extract script files for story-tree analysis."
