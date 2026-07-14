@@ -23,7 +23,7 @@ Use this skill to build or run a compliant crawler for branching narrative game 
    - Write `.part` files first, rename after completion, and record SHA256, byte length, source URL, `upload_id`, and timestamp in a manifest.
 4. Inspect archives before broad extraction.
    - Scan zip entries for script candidates: `.rpy`, `.rpyc`, `.ink`, `.ks`, Ink JSON, or game-specific narrative JSON.
-   - Prefer明文 scripts (`.rpy/.ink/.ks`). Mark `.rpyc` as compiled and do not automatically decompile unless the user explicitly approves and the license/use case permits it.
+   - Prefer plaintext scripts (`.rpy/.ink/.ks`). Mark `.rpyc` as compiled and do not automatically decompile unless the user explicitly approves and the license/use case permits it.
 5. Prepare story-tree analysis.
    - Use `references/story_tree_schema.md` for target fields.
    - For Ren'Py: identify `label`, `menu`, `jump`, `call`, `return`, `if/elif/else`, and variable effects.
@@ -44,6 +44,7 @@ Use this skill to build or run a compliant crawler for branching narrative game 
 - Read `references/story_tree_schema.md` before generating JSON/Mermaid outputs for scene/choice/branch/effect/end validation.
 - Use `scripts/inspect_itch_page.py` on saved itch.io HTML to extract upload metadata without downloading.
 - Use `scripts/scan_archive_scripts.py` to list candidate script files inside zip archives.
+- Use the repository-root `lemmasoft_free_windows_spider.py` for full LemmaSoft-only runs that require free-title filtering, Windows upload selection, resumable browser crawling, downloading, manifests, and script extraction.
 
 ## Expected Deliverables
 
