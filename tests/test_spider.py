@@ -3,6 +3,7 @@ from __future__ import annotations
 import tempfile
 import unittest
 import zipfile
+import csv
 from pathlib import Path
 
 import lemmasoft_free_windows_spider as spider
@@ -53,6 +54,41 @@ class SpiderParserTests(unittest.TestCase):
             self.assertEqual(1, result["script_count"])
             self.assertEqual("game/script.rpy", result["scripts"][0]["archive_path"])
             self.assertEqual("game/archive.rpa", result["packed_containers"][0]["archive_path"])
+
+    def test_candidate_csv_import_skips_unsupported_hosts(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            candidate_csv = root / "candidates.csv"
+            with candidate_csv.open("w", encoding="utf-8-sig", newline="") as handle:
+                writer = csv.DictWriter(
+                    handle,
+                    fieldnames=["topic_id", "title", "clean_title", "forum_url", "external_url", "release_id"],
+                )
+                writer.writeheader()
+                writer.writerow(
+                    {
+                        "topic_id": "1",
+                        "title": "Example [FREE]",
+                        "clean_title": "Example",
+                        "forum_url": "https://lemmasoft.renai.us/forums/viewtopic.php?t=1",
+                        "external_url": "https://author.itch.io/example",
+                        "release_id": "r1",
+                    }
+                )
+                writer.writerow(
+                    {
+                        "topic_id": "2",
+                        "title": "Unsupported [FREE]",
+                        "clean_title": "Unsupported",
+                        "forum_url": "https://lemmasoft.renai.us/forums/viewtopic.php?t=2",
+                        "external_url": "https://example.invalid/game",
+                        "release_id": "r2",
+                    }
+                )
+            store = spider.Store(root / "output")
+            self.assertEqual(1, spider.import_candidate_csv(candidate_csv, store))
+            self.assertEqual(["1"], list(store.data["topics"]))
+            self.assertEqual("https://author.itch.io/example", store.data["topics"]["1"]["release_links"][0]["url"])
 
 
 if __name__ == "__main__":

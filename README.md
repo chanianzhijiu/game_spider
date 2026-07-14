@@ -17,6 +17,25 @@ python -m playwright install chromium
 
 ## Run
 
+### Recommended: skip LemmaSoft and use VNDB-matched release pages
+
+Cloudflare may reject every Playwright-controlled browser even though ordinary Chrome can open LemmaSoft. The repository therefore includes a candidate table built by matching the previously collected 46-page free-topic catalog against VNDB's official freeware Windows releases. This mode never opens LemmaSoft:
+
+```powershell
+python .\lemmasoft_free_windows_spider.py `
+  --candidate-csv .\data\lemmasoft_vndb_free_windows_itch_candidates.csv `
+  --output-dir F:\lemmasoft_data `
+  --profile-dir "$env:LOCALAPPDATA\game_spider\itch_profile" `
+  --browser-channel chrome `
+  --download `
+  --release-delay 5 `
+  --verbose
+```
+
+The snapshot contains only title-matched, official, non-patch, non-demo VNDB releases marked freeware with Windows support and an itch.io external link. Each itch.io page is still checked for a public Windows upload before downloading. Ambiguous, unavailable, paid, or permission-protected files are skipped or left for review.
+
+Use `--limit-topics 3` without `--download` for the first test. Progress remains resumable through `state.json`.
+
 Build the free-game catalog without downloading packages:
 
 ```powershell

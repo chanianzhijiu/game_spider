@@ -210,6 +210,71 @@ class Store:
         return list(self.data["topics"].values())
 
 
+def import_candidate_csv(path: Path, store: Store) -> int:
+    """Import pre-matched public release pages without visiting LemmaSoft."""
+    imported_links = 0
+    with path.open("r", encoding="utf-8-sig", newline="") as handle:
+        reader = csv.DictReader(handle)
+        required = {"topic_id", "title", "forum_url", "external_url"}
+        missing = required.difference(reader.fieldnames or [])
+        if missing:
+            raise ValueError(f"Candidate CSV is missing columns: {', '.join(sorted(missing))}")
+        for row in reader:
+            topic_id = normalize_space(row.get("topic_id"))
+            title = normalize_space(row.get("title"))
+            external_url = normalize_space(row.get("external_url"))
+            if not topic_id or not title or not external_url or not is_release_page(external_url):
+                continue
+            topic = store.data["topics"].get(topic_id)
+            if topic is None:
+                topic = asdict(
+                    TopicInfo(
+                        topic_id=topic_id,
+                        title=title,
+                        clean_title=normalize_space(row.get("clean_title")) or clean_title(title),
+                        url=normalize_space(row.get("forum_url")),
+                        author=normalize_space(row.get("author")) or None,
+                        tags=[value.strip() for value in (row.get("tags") or "").split(";") if value.strip()],
+                        topic_status="candidate_imported",
+                    )
+                )
+                topic["vndb_releases"] = []
+            link = asdict(
+                LinkInfo(
+                    text=normalize_space(row.get("release_title")) or title,
+                    url=external_url,
+                    host=urlparse(external_url).netloc.lower(),
+                    kind="release_page",
+                )
+            )
+            known_urls = {item.get("url") for item in topic.get("release_links", [])}
+            if external_url not in known_urls:
+                topic.setdefault("external_links", []).append(link)
+                topic.setdefault("release_links", []).append(link)
+                imported_links += 1
+            release_id = normalize_space(row.get("release_id"))
+            known_releases = {item.get("release_id") for item in topic.get("vndb_releases", [])}
+            if release_id and release_id not in known_releases:
+                topic.setdefault("vndb_releases", []).append(
+                    {
+                        "release_id": release_id,
+                        "release_title": normalize_space(row.get("release_title")),
+                        "vn_id": normalize_space(row.get("vn_id")),
+                        "vn_title": normalize_space(row.get("vn_title")),
+                        "released": normalize_space(row.get("released")),
+                        "platforms": normalize_space(row.get("platforms")),
+                        "languages": normalize_space(row.get("languages")),
+                        "engine": normalize_space(row.get("engine")),
+                        "release_url": normalize_space(row.get("release_url")),
+                        "vn_url": normalize_space(row.get("vn_url")),
+                    }
+                )
+            topic["updated_at"] = utc_now()
+            store.data["topics"][topic_id] = topic
+    store.save()
+    return imported_links
+
+
 class BrowserCrawler:
     def __init__(self, args: argparse.Namespace, store: Store) -> None:
         self.args = args
@@ -737,6 +802,11 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--output-dir", type=Path, default=Path("lemmasoft_spider_output"))
     parser.add_argument("--profile-dir", type=Path, default=Path(".browser-profile/lemmasoft"))
     parser.add_argument(
+        "--candidate-csv",
+        type=Path,
+        help="Import pre-matched public release URLs and skip all LemmaSoft requests.",
+    )
+    parser.add_argument(
         "--browser-channel",
         choices=("chromium", "chrome", "msedge"),
         default="chromium",
@@ -776,8 +846,12 @@ def main() -> int:
         return 0
     try:
         with BrowserCrawler(args, store) as crawler:
-            crawler.crawl_forum_pages()
-            crawler.crawl_topic_details()
+            if args.candidate_csv:
+                imported = import_candidate_csv(args.candidate_csv, store)
+                logging.info("Imported %s release links from %s; LemmaSoft will not be opened.", imported, args.candidate_csv)
+            else:
+                crawler.crawl_forum_pages()
+                crawler.crawl_topic_details()
             crawler.process_downloads()
     except KeyboardInterrupt:
         logging.warning("Interrupted; state has been preserved for resume.")
