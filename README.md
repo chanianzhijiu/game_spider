@@ -31,12 +31,28 @@ python .\lemmasoft_free_windows_spider.py --output-dir .\lemmasoft_spider_output
 
 Chromium runs visibly by default. If Cloudflare asks for verification, complete it manually in the opened browser. The persistent profile is reused on later runs.
 
+If ordinary Google Chrome can open the forum but Playwright's bundled Chromium remains on Cloudflare's verification page, use the installed stable Chrome with a local persistent profile:
+
+```powershell
+python .\lemmasoft_free_windows_spider.py `
+  --output-dir F:\lemmasoft_data `
+  --profile-dir "$env:LOCALAPPDATA\game_spider\lemmasoft_browser_profile" `
+  --browser-channel chrome `
+  --max-pages 1 `
+  --limit-topics 3 `
+  --challenge-timeout 900 `
+  --verbose
+```
+
+Use `--browser-channel msedge` instead when Microsoft Edge is available but Google Chrome is not. These options still use a visible Playwright-controlled browser and require the user to complete any verification manually; they do not bypass Cloudflare.
+
 Run the same command again after an interruption. `state.json` stores page, topic, release-page, and download progress.
 
 Useful options:
 
 - `--max-pages 46`: number of forum pages, default `46`.
 - `--limit-topics 5`: small local test run after forum indexing.
+- `--browser-channel chrome`: use installed Google Chrome; `msedge` and bundled `chromium` are also supported.
 - `--headless`: use only after the persistent browser profile has passed verification.
 - `--no-extract-scripts`: keep packages without extracting `.rpy/.rpyc/.ink/.ks` candidates.
 - `--fresh`: reset crawl state while leaving downloaded files on disk.

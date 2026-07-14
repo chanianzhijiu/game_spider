@@ -225,12 +225,16 @@ class BrowserCrawler:
             raise RuntimeError("Playwright is not installed. Run: pip install -r requirements.txt")
         self.playwright = sync_playwright().start()
         self.args.profile_dir.mkdir(parents=True, exist_ok=True)
-        self.context = self.playwright.chromium.launch_persistent_context(
-            user_data_dir=str(self.args.profile_dir.resolve()),
-            headless=self.args.headless,
-            accept_downloads=True,
-            viewport={"width": 1280, "height": 900},
-        )
+        launch_options: dict[str, Any] = {
+            "user_data_dir": str(self.args.profile_dir.resolve()),
+            "headless": self.args.headless,
+            "accept_downloads": True,
+            "viewport": {"width": 1280, "height": 900},
+        }
+        if self.args.browser_channel != "chromium":
+            launch_options["channel"] = self.args.browser_channel
+        logging.info("Launching browser channel: %s", self.args.browser_channel)
+        self.context = self.playwright.chromium.launch_persistent_context(**launch_options)
         self.page = self.context.pages[0] if self.context.pages else self.context.new_page()
         return self
 
@@ -253,6 +257,7 @@ class BrowserCrawler:
             verification = (
                 "just a moment" in title.lower()
                 or "checking your browser" in title.lower()
+                or "请稍候" in title
                 or self.page.locator("iframe[src*='challenges.cloudflare.com'], .cf-turnstile").count() > 0
             )
             if self.page.locator(ready_selector).count() > 0 and not verification:
@@ -260,7 +265,11 @@ class BrowserCrawler:
             if not allow_manual_verification or time.monotonic() >= deadline:
                 raise RuntimeError(f"Page did not become ready: {url} (title={title!r})")
             if not announced:
-                logging.warning("Waiting for browser verification at %s. Complete it manually in Chromium.", url)
+                logging.warning(
+                    "Waiting for browser verification at %s. Complete it manually in the opened %s window.",
+                    url,
+                    self.args.browser_channel,
+                )
                 announced = True
             self.page.wait_for_timeout(1000)
 
@@ -727,6 +736,12 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--forum-url", default=DEFAULT_FORUM_URL)
     parser.add_argument("--output-dir", type=Path, default=Path("lemmasoft_spider_output"))
     parser.add_argument("--profile-dir", type=Path, default=Path(".browser-profile/lemmasoft"))
+    parser.add_argument(
+        "--browser-channel",
+        choices=("chromium", "chrome", "msedge"),
+        default="chromium",
+        help="Browser to launch. Try chrome or msedge when bundled Chromium cannot pass manual verification.",
+    )
     parser.add_argument("--max-pages", type=int, default=46)
     parser.add_argument("--limit-topics", type=int, default=0, help="Development limit; 0 means all free topics.")
     parser.add_argument("--download", action="store_true", help="Download eligible Windows packages. Without this flag, build a candidate catalog only.")
