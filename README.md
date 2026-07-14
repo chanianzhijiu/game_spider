@@ -1,6 +1,62 @@
-# game_spider
+# LemmaSoft Free Windows Game Spider
 
-This repository stores reusable Codex skills and helper scripts for collecting public branching narrative game packages and preparing them for script/story-tree analysis.
+This repository contains a complete crawler for the LemmaSoft `Completed Games` forum:
+
+`https://lemmasoft.renai.us/forums/viewforum.php?f=11`
+
+The crawler only indexes topics explicitly marked `FREE` or `freeware`, excludes demo-only entries, and only downloads packages identified as Windows/PC builds.
+
+## Install
+
+Python 3.10 or newer is recommended.
+
+```powershell
+python -m pip install -r requirements.txt
+python -m playwright install chromium
+```
+
+## Run
+
+Build the free-game catalog without downloading packages:
+
+```powershell
+python .\lemmasoft_free_windows_spider.py --output-dir .\lemmasoft_spider_output
+```
+
+Download eligible Windows packages and extract script candidates from zip files:
+
+```powershell
+python .\lemmasoft_free_windows_spider.py --output-dir .\lemmasoft_spider_output --download
+```
+
+Chromium runs visibly by default. If Cloudflare asks for verification, complete it manually in the opened browser. The persistent profile is reused on later runs.
+
+Run the same command again after an interruption. `state.json` stores page, topic, release-page, and download progress.
+
+Useful options:
+
+- `--max-pages 46`: number of forum pages, default `46`.
+- `--limit-topics 5`: small local test run after forum indexing.
+- `--headless`: use only after the persistent browser profile has passed verification.
+- `--no-extract-scripts`: keep packages without extracting `.rpy/.rpyc/.ink/.ks` candidates.
+- `--fresh`: reset crawl state while leaving downloaded files on disk.
+
+## Outputs
+
+```text
+lemmasoft_spider_output/
+  state.json
+  summary.json
+  lemmasoft_free_windows_catalog.csv
+  lemmasoft_free_windows_catalog.jsonl
+  games/
+    <topic-id>-<slug>/
+      manifest.json
+      packages/
+      scripts/
+```
+
+The program does not bypass authentication, CAPTCHA, paid access, private files, or permission errors. Ambiguous generic archives and unsupported release hosts are left for manual review.
 
 ## Skills
 
@@ -8,11 +64,10 @@ This repository stores reusable Codex skills and helper scripts for collecting p
 
 Path: `skills/game-script-spider`
 
-Use this skill when working with:
+Use this skill when extending or reviewing the crawler:
 
 - LemmaSoft Completed Games discovery pages
 - itch.io public/free visual novel release pages
-- VNDB metadata matching
 - Ren'Py / Ink / KiriKiri script discovery
 - story-tree outputs with `scene`, `choice_group`, `branch`, `effect`, and `end` nodes
 
@@ -31,10 +86,9 @@ The skill emphasizes compliant collection:
 
 ## Typical Flow
 
-1. Discover candidate games from LemmaSoft or another public index.
-2. Normalize title metadata with VNDB.
-3. Inspect release pages for public/free downloadable archives.
-4. Download allowed packages through normal site flows.
-5. Scan archives for narrative scripts.
+1. Discover explicitly free games from LemmaSoft.
+2. Inspect each topic's public release links.
+3. Select Windows builds, including itch.io uploads with Windows platform metadata.
+4. Download through normal site flows and write SHA256 manifests.
+5. Extract narrative script candidates from zip archives.
 6. Convert script control flow into story-tree JSON/Mermaid artifacts.
-
