@@ -284,6 +284,8 @@ class BrowserCrawler:
         self.page: Page | None = None
         self.http = requests.Session()
         self.http.headers.update({"User-Agent": USER_AGENT, "Accept": "*/*"})
+        if self.args.proxy_server:
+            self.http.proxies.update({"http": self.args.proxy_server, "https": self.args.proxy_server})
 
     def __enter__(self) -> "BrowserCrawler":
         if sync_playwright is None:
@@ -296,6 +298,12 @@ class BrowserCrawler:
             "accept_downloads": True,
             "viewport": {"width": 1280, "height": 900},
         }
+        if self.args.proxy_server:
+            launch_options["proxy"] = {
+                "server": self.args.proxy_server,
+                **({"bypass": self.args.proxy_bypass} if self.args.proxy_bypass else {}),
+            }
+            logging.info("Using configured browser proxy: %s", self.args.proxy_server)
         if self.args.browser_channel != "chromium":
             launch_options["channel"] = self.args.browser_channel
         logging.info("Launching browser channel: %s", self.args.browser_channel)
@@ -811,6 +819,14 @@ def parse_args() -> argparse.Namespace:
         choices=("chromium", "chrome", "msedge"),
         default="chromium",
         help="Browser to launch. Try chrome or msedge when bundled Chromium cannot pass manual verification.",
+    )
+    parser.add_argument(
+        "--proxy-server",
+        help="Optional HTTP or SOCKS proxy, for example http://127.0.0.1:10809.",
+    )
+    parser.add_argument(
+        "--proxy-bypass",
+        help="Optional comma-separated hosts that should bypass --proxy-server.",
     )
     parser.add_argument("--max-pages", type=int, default=46)
     parser.add_argument("--limit-topics", type=int, default=0, help="Development limit; 0 means all free topics.")

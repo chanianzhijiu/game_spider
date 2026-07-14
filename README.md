@@ -36,6 +36,22 @@ The snapshot contains only title-matched, official, non-patch, non-demo VNDB rel
 
 Use `--limit-topics 3` without `--download` for the first test. Progress remains resumable through `state.json`.
 
+If the computer's direct DNS/network route cannot reach itch.io but an authorized local proxy is already running, pass it only to this program instead of changing the Windows system proxy:
+
+```powershell
+python .\lemmasoft_free_windows_spider.py `
+  --candidate-csv .\data\lemmasoft_vndb_free_windows_itch_candidates.csv `
+  --output-dir F:\lemmasoft_data `
+  --profile-dir "$env:LOCALAPPDATA\game_spider\itch_proxy_profile" `
+  --browser-channel chrome `
+  --proxy-server http://127.0.0.1:10809 `
+  --limit-topics 3 `
+  --release-delay 5 `
+  --verbose
+```
+
+Confirm the local proxy port is listening before use. `--proxy-server` also applies to signed-URL fallback downloads. SOCKS proxies are supported after installing the updated requirements.
+
 Build the free-game catalog without downloading packages:
 
 ```powershell

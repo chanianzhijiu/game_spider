@@ -5,6 +5,7 @@ import unittest
 import zipfile
 import csv
 from pathlib import Path
+from types import SimpleNamespace
 
 import lemmasoft_free_windows_spider as spider
 
@@ -89,6 +90,12 @@ class SpiderParserTests(unittest.TestCase):
             self.assertEqual(1, spider.import_candidate_csv(candidate_csv, store))
             self.assertEqual(["1"], list(store.data["topics"]))
             self.assertEqual("https://author.itch.io/example", store.data["topics"]["1"]["release_links"][0]["url"])
+
+    def test_http_session_uses_configured_proxy(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            args = SimpleNamespace(proxy_server="http://127.0.0.1:10809")
+            crawler = spider.BrowserCrawler(args, spider.Store(Path(directory) / "output"))
+            self.assertEqual("http://127.0.0.1:10809", crawler.http.proxies["https"])
 
 
 if __name__ == "__main__":
